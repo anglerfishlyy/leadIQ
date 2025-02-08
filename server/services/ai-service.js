@@ -20,8 +20,7 @@ class LeadFilterService {
       temperature: 0.7
     });
 
-    // Just return the raw response for now
-    return completion.choices[0].message.content;
+    return this._parseAIResponse(completion.choices[0].message.content, leads);
   }
 
   _buildFilterPrompt(leads, criteria) {
@@ -31,6 +30,20 @@ class LeadFilterService {
     - Industry match (${criteria.targetIndustries.join(', ')})
     
     Leads to analyze: ${JSON.stringify(leads)}`;
+  }
+
+  _parseAIResponse(aiResponse, originalLeads) {
+    try {
+      const scores = JSON.parse(aiResponse);
+      return originalLeads.map((lead, index) => ({
+        ...lead,
+        score: scores[index] || 5,
+        aiNotes: scores[index] > 7 ? 'High potential' : 'Standard lead'
+      }));
+    } catch {
+      console.warn('AI response parsing failed, using default scores');
+      return originalLeads.map(lead => ({ ...lead, score: 5 }));
+    }
   }
 }
 
