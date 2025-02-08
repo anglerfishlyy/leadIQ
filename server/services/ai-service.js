@@ -8,19 +8,24 @@ class LeadFilterService {
   async filterLeads(leads, criteria) {
     const prompt = this._buildFilterPrompt(leads, criteria);
     
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [{
-        role: "system",
-        content: "You are a lead scoring expert that evaluates sales leads."
-      }, {
-        role: "user",
-        content: prompt
-      }],
-      temperature: 0.7
-    });
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{
+          role: "system",
+          content: "You are a lead scoring expert that evaluates sales leads."
+        }, {
+          role: "user",
+          content: prompt
+        }],
+        temperature: 0.7
+      });
 
-    return this._parseAIResponse(completion.choices[0].message.content, leads);
+      return this._parseAIResponse(completion.choices[0].message.content, leads);
+    } catch (error) {
+      console.error('AI filtering failed:', error);
+      return this._basicFilter(leads, criteria);
+    }
   }
 
   _buildFilterPrompt(leads, criteria) {
@@ -44,6 +49,19 @@ class LeadFilterService {
       console.warn('AI response parsing failed, using default scores');
       return originalLeads.map(lead => ({ ...lead, score: 5 }));
     }
+  }
+
+  _basicFilter(leads, criteria) {
+    return leads.map(lead => {
+      let score = 5;
+      
+      if (criteria.targetTitles.some(title => 
+        lead.title.toLowerCase().includes(title.toLowerCase()))) {
+        score += 2;
+      }
+      
+      return { ...lead, score };
+    });
   }
 }
 
